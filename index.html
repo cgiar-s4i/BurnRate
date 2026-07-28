@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S4I Budget Monitoring Brief — May 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f6f8; color: #1a1a2e; font-size: 13px; }
+  .page { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  .header { background: #1a3a5c; color: white; padding: 20px 28px; border-radius: 8px; margin-bottom: 16px; }
+  .header h1 { font-size: 20px; font-weight: 700; }
+  .header .sub { font-size: 12px; color: #a8c4e0; margin-top: 4px; }
+  .header .note { font-size: 11px; color: #7aa8c9; margin-top: 8px; font-style: italic; }
+  .metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 16px; }
+  .metric-card { background: white; border-radius: 8px; padding: 14px 16px; border-left: 4px solid #1a3a5c; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+  .metric-card .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #666; margin-bottom: 4px; }
+  .metric-card .value { font-size: 22px; font-weight: 700; color: #1a3a5c; }
+  .metric-card .sub { font-size: 10px; color: #888; margin-top: 2px; }
+  .metric-card.red { border-left-color: #c0392b; }
+  .metric-card.amber { border-left-color: #e67e22; }
+  .metric-card.green { border-left-color: #27ae60; }
+  .section { background: white; border-radius: 8px; padding: 18px 20px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+  .section-title { font-size: 13px; font-weight: 700; color: #1a3a5c; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #eee; }
+  .risk-intro { font-size: 12px; color: #444; margin-bottom: 14px; line-height: 1.65; background: #f8f9fa; padding: 10px 12px; border-radius: 5px; border-left: 3px solid #1a3a5c; }
+  .risk-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .risk-card { border-radius: 7px; padding: 12px; background: #fff5f5; border: 1px solid #f5c6cb; }
+  .risk-card .center-name { font-weight: 700; font-size: 12px; margin-bottom: 4px; }
+  .risk-card .budget-line { font-size: 10px; color: #666; margin-bottom: 4px; }
+  .risk-card .gap-val { font-size: 18px; font-weight: 700; color: #c0392b; margin: 4px 0; }
+  .risk-card .burn-val { font-size: 11px; color: #555; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { background: #f0f4f8; color: #1a3a5c; font-weight: 700; text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; }
+  td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafd; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+  .tag-green { background: #d4edda; color: #155724; }
+  .tag-amber { background: #fff3cd; color: #856404; }
+  .tag-red { background: #f8d7da; color: #721c24; }
+  .tag-gray { background: #e9ecef; color: #495057; }
+  .tag-priority { background: #c0392b; color: white; }
+  .tag-reassess { background: #721c24; color: white; }
+  .tag-monitor27 { background: #856404; color: white; }
+  .tag-strong { background: #155724; color: white; }
+  .gap-neg { color: #c0392b; font-weight: 700; }
+  .gap-pos { color: #27ae60; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .chart-wrap { position: relative; height: 220px; }
+  .carryover-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+  .co-card { border-radius: 6px; padding: 10px 12px; text-align: center; }
+  .co-card.pos { background: #edf7f0; border: 1px solid #a3d9b1; }
+  .co-card.zero { background: #f0f4f8; border: 1px solid #b8d4ec; }
+  .co-card.over { background: #fff5f5; border: 1px solid #f5c6cb; }
+  .co-card .co-c { font-size: 11px; font-weight: 700; }
+  .co-card .co-a { font-size: 16px; font-weight: 700; margin: 3px 0; }
+  .co-card.pos .co-a { color: #27ae60; }
+  .co-card.zero .co-a { color: #1a3a5c; }
+  .co-card.over .co-a { color: #c0392b; }
+  .co-card .co-r { font-size: 10px; color: #666; }
+  .co-card .co-27 { font-size: 10px; font-weight: 700; margin-top: 4px; }
+  .co-card.pos .co-27 { color: #721c24; }
+  .action-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .action-col { border-radius: 7px; padding: 14px; }
+  .action-col.dir { background: #1a3a5c; color: white; }
+  .action-col.sho { background: #2c6e49; color: white; }
+  .action-col.joi { background: #5c3a1a; color: white; }
+  .action-col h3 { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+  .action-col .role-sub { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; margin-bottom: 10px; }
+  .action-item { padding: 8px 10px; border-radius: 5px; margin-bottom: 6px; font-size: 11.5px; line-height: 1.55; }
+  .action-col.dir .action-item { background: rgba(255,255,255,0.12); }
+  .action-col.sho .action-item { background: rgba(255,255,255,0.12); }
+  .action-col.joi .action-item { background: rgba(255,255,255,0.12); }
+  .a-num { font-weight: 700; opacity: 0.6; margin-right: 3px; }
+  .red-flag { background: #fff5f5; border: 1.5px solid #e74c3c; border-radius: 7px; padding: 12px 14px; margin-bottom: 14px; }
+  .red-flag .flag-title { font-weight: 700; color: #c0392b; font-size: 12px; margin-bottom: 5px; }
+  .red-flag .flag-body { font-size: 12px; line-height: 1.65; color: #444; }
+  .implications-box { background: #fff8e1; border: 1.5px solid #f0c040; border-radius: 7px; padding: 14px 16px; margin-bottom: 14px; }
+  .implications-box .imp-title { font-weight: 700; color: #7a5200; font-size: 12px; margin-bottom: 6px; }
+  .implications-box .imp-body { font-size: 12px; line-height: 1.65; color: #444; }
+  .aow-note { font-size: 11px; color: #777; font-style: italic; margin-top: 8px; line-height: 1.5; }
+  .footer { text-align: center; font-size: 10px; color: #aaa; margin-top: 16px; padding: 10px; }
+  .total-row { font-weight: 700; background: #f0f4f8; }
+  tr.highlight-27 td { background: #fff8f0; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- Header -->
+<div class="header">
+  <h1>S4I BUDGET MONITORING BRIEF &mdash; MAY 2026</h1>
+  <div class="sub">SP 09 Scaling for Impact &nbsp;|&nbsp; Period: January&ndash;May 2026 &nbsp;|&nbsp; Source: Anaplan via Shola financial report (S4I 2026 Budget Monitoring Report)</div>
+  <div class="note">Director&rsquo;s review document. Data quality notes: &ldquo;2026 by AoW&rdquo; and &ldquo;2026 by Category&rdquo; summary tabs still carry #REF! errors for AoWs 6&ndash;11 from legacy formula references. Program budget was revised mid-year: the center/AoW breakdown now totals $22.75M, while the &ldquo;by Category&rdquo; tab still totals $21.98M (pre-rebudget) &mdash; reconciliation requested from Shola. ICRISAT actual dropped from $32,424 (April report) to $0 (May report), likely a posting/reclassification issue &mdash; correction requested. All figures drawn from the center-level breakdown unless noted.</div>
+</div>
+
+<!-- Metrics -->
+<div class="metrics">
+  <div class="metric-card">
+    <div class="label">Total Budget 2026</div>
+    <div class="value">$22.7M</div>
+    <div class="sub">Program-wide (center/AoW basis)</div>
+  </div>
+  <div class="metric-card red">
+    <div class="label">Actual Spend (Jan&ndash;May)</div>
+    <div class="value">$6.23M</div>
+    <div class="sub">27.4% burn rate</div>
+  </div>
+  <div class="metric-card amber">
+    <div class="label">Expected at 5 Months</div>
+    <div class="value">41.7%</div>
+    <div class="sub">14.3pp below target</div>
+  </div>
+  <div class="metric-card red">
+    <div class="label">Dollar Gap to Target</div>
+    <div class="value">$3.25M</div>
+    <div class="sub">Total delivery shortfall</div>
+  </div>
+  <div class="metric-card red">
+    <div class="label">Non-CGIAR Collaborators</div>
+    <div class="value">2.7%</div>
+    <div class="sub">$61K of $2.25M budget spent</div>
+  </div>
+</div>
+
+<!-- Priority risk -->
+<div class="section">
+  <div class="section-title">&#9888; PRIORITY RISK: FIVE CENTERS BY ABSOLUTE DOLLAR GAP FROM TARGET</div>
+  <div class="risk-intro">
+    Burn rate is not the right management signal on its own. A center at 24% burn on a $3M budget carries a ~$545K delivery gap; the same burn rate on a $100K budget is inconsequential. Priority is determined by <strong>absolute dollar shortfall from the 41.7% expected rate through May</strong>. Centers below $500K in budget are lower priority regardless of burn rate.
+  </div>
+  <div class="risk-grid">
+    <div class="risk-card">
+      <div class="center-name">CIAT / Alliance</div>
+      <div class="budget-line">Budget: $3,030,683</div>
+      <div class="gap-val">&#8722;$545K</div>
+      <div class="burn-val">Burn 23.7% vs. 41.7% expected</div>
+    </div>
+    <div class="risk-card">
+      <div class="center-name">ILRI</div>
+      <div class="budget-line">Budget: $2,503,641</div>
+      <div class="gap-val">&#8722;$458K</div>
+      <div class="burn-val">Burn 23.4% vs. 41.7% expected</div>
+    </div>
+    <div class="risk-card">
+      <div class="center-name">IWMI</div>
+      <div class="budget-line">Budget: $3,527,231 (largest)</div>
+      <div class="gap-val">&#8722;$443K</div>
+      <div class="burn-val">Burn 29.1% vs. 41.7% expected</div>
+    </div>
+    <div class="risk-card">
+      <div class="center-name">IRRI</div>
+      <div class="budget-line">Budget: $1,772,078</div>
+      <div class="gap-val">&#8722;$333K</div>
+      <div class="burn-val">Burn 22.9% vs. 41.7% expected</div>
+    </div>
+    <div class="risk-card">
+      <div class="center-name">IFPRI</div>
+      <div class="budget-line">Budget: $2,012,320</div>
+      <div class="gap-val">&#8722;$284K</div>
+      <div class="burn-val">Burn 27.6% vs. 41.7% expected</div>
+    </div>
+  </div>
+  <p style="font-size:11px;color:#666;margin-top:10px;">Combined shortfall across these five centers: approximately <strong>$2.06M</strong> &mdash; 64% of the program&rsquo;s total delivery gap.</p>
+</div>
+
+<!-- 2027 implications box -->
+<div class="implications-box">
+  <div class="imp-title">&#128202; 2027 BUDGET PLANNING NOTE: CALIBRATING ALLOCATIONS TO DEMONSTRATED DELIVERY CAPACITY</div>
+  <div class="imp-body">
+    The 2026 program budget is finalized and cannot be adjusted in response to current-year burn rates. However, centers demonstrating a consistent pattern of underutilizing their allocation across 2025 and 2026 should be subject to formal review during the 2027 PORB process, with future allocations calibrated to demonstrated delivery capacity rather than to historical precedent alone. Budget resources should flow to where delivery is proven. For overspending, the appropriate response is procedural &mdash; requiring advance authorization for expenditure above budget &mdash; rather than retrospective budget reduction, which risks inducing precautionary underspending and is the worse outcome. IFPRI, ILRI, and CIAT are the most immediate candidates for 2027 allocation review, having underperformed in both 2025 and 2026. Any reduction in allocation should be accompanied by a documented rationale and discussed with the relevant center and AoW lead.
+  </div>
+</div>
+
+<!-- Non-CGIAR red flag -->
+<div class="red-flag">
+  <div class="flag-title">&#9888; STANDING RED FLAG: NON-CGIAR COLLABORATOR EXPENDITURE</div>
+  <div class="flag-body">
+    Budget: $2,246,790 &nbsp;|&nbsp; Actual: $61,265 &nbsp;|&nbsp; Burn rate: <strong>2.7%</strong> &mdash; flagged as a standing priority concern in every monitoring cycle. Spend has moved off zero since April ($17K &rarr; $61K) but remains critically low.<br>
+    At five months, the program is on track to severely underspend this entire external partner allocation unless subcontracts are urgently activated. AfricaRice ($202K non-CGIAR budget, $0 spent) and CIMMYT are the largest contributors. Failure to activate external collaborators reduces the program&rsquo;s field footprint and partner engagement at the point in the year when delivery should be accelerating. This pattern, if repeated in a second year, should be treated as a workplan design failure rather than an execution delay.
+  </div>
+</div>
+
+<!-- AfricaRice AoW misallocation flag -->
+<div class="red-flag">
+  <div class="flag-title">&#9888; ALLOCATION FLAG: AFRICARICE CHARGING AGAINST AN OVERSPENT AoW LINE</div>
+  <div class="flag-body">
+    AfricaRice&rsquo;s 2026 spend is being posted to the wrong Area of Work. <strong>AoW 2 (Grand Challenges)</strong> carries a <strong>negative budget of &#8722;$189,279</strong> &mdash; already over-committed from the carryforward &mdash; yet it has absorbed <strong>$223,800</strong> in actuals, pushing available funds to <strong>&#8722;$413,079</strong>. That single line accounts for roughly 81% of AfricaRice&rsquo;s total $275,638 spend. Meanwhile <strong>AoW 4 (Finance &amp; Partnerships)</strong>, which holds essentially all of the center&rsquo;s real 2026 headroom &mdash; <strong>$790,171 budget, only $37,143 spent (4.7% burn), $753,028 unspent</strong> &mdash; is barely being drawn on.<br>
+    <strong>Corrective action:</strong> AfricaRice should stop charging expenditure to AoW 2, which is already overspent, and redirect delivery and cost postings to AoW 4, where the budget authority sits. Continuing to burn against a negative AoW 2 line deepens an unauthorized overspend while leaving the funded workplan unexecuted. Shola should confirm whether the AoW 2 charges are miscoding (correctable by reposting to AoW 4) or genuine over-delivery requiring advance authorization.
+  </div>
+</div>
+
+<!-- Center table -->
+<div class="section">
+  <div class="section-title">&#128203; CENTER BURN RATES &mdash; RANKED BY DOLLAR GAP FROM TARGET, WITH 2027 OUTLOOK (Jan&ndash;May 2026)</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Center</th>
+        <th class="num">Budget 2026 ($)</th>
+        <th class="num">Actual ($)</th>
+        <th class="num">Burn Rate</th>
+        <th class="num">Gap from 41.7% ($)</th>
+        <th>2026 Status</th>
+        <th>2027 Budget Outlook</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="highlight-27"><td>CIAT / Alliance</td><td class="num">3,030,683</td><td class="num">717,366</td><td class="num">23.7%</td><td class="num gap-neg">&#8722;545,419</td><td><span class="tag tag-red">Below target</span></td><td><span class="tag tag-reassess">Review 2027</span></td></tr>
+      <tr class="highlight-27"><td>ILRI</td><td class="num">2,503,641</td><td class="num">584,942</td><td class="num">23.4%</td><td class="num gap-neg">&#8722;458,241</td><td><span class="tag tag-red">Below target</span></td><td><span class="tag tag-reassess">Review 2027</span></td></tr>
+      <tr><td>IWMI</td><td class="num">3,527,231</td><td class="num">1,027,065</td><td class="num">29.1%</td><td class="num gap-neg">&#8722;442,615</td><td><span class="tag tag-amber">Below target</span></td><td><span class="tag tag-monitor27">Watch</span></td></tr>
+      <tr><td>IRRI</td><td class="num">1,772,078</td><td class="num">405,420</td><td class="num">22.9%</td><td class="num gap-neg">&#8722;332,946</td><td><span class="tag tag-red">Below target</span></td><td><span class="tag tag-monitor27">Watch</span></td></tr>
+      <tr class="highlight-27"><td>IFPRI</td><td class="num">2,012,320</td><td class="num">554,544</td><td class="num">27.6%</td><td class="num gap-neg">&#8722;283,923</td><td><span class="tag tag-red">Below target</span></td><td><span class="tag tag-reassess">Review 2027</span></td></tr>
+      <tr><td>ICARDA</td><td class="num">1,065,529</td><td class="num">293,795</td><td class="num">27.6%</td><td class="num gap-neg">&#8722;150,175</td><td><span class="tag tag-amber">Below target</span></td><td><span class="tag tag-monitor27">Watch</span></td></tr>
+      <tr><td>CIP</td><td class="num">960,466</td><td class="num">262,464</td><td class="num">27.3%</td><td class="num gap-neg">&#8722;137,730</td><td><span class="tag tag-amber">Below target</span></td><td><span class="tag tag-monitor27">Watch</span></td></tr>
+      <tr><td>Bioversity <sup>&#8224;</sup></td><td class="num">317,713</td><td class="num">19,787</td><td class="num">6.2%</td><td class="num gap-neg">&#8722;112,593</td><td><span class="tag tag-red">Very low</span></td><td><span class="tag tag-monitor27">Clarify</span></td></tr>
+      <tr><td>CIMMYT</td><td class="num">2,423,691</td><td class="num">904,698</td><td class="num">37.3%</td><td class="num gap-neg">&#8722;105,173</td><td><span class="tag tag-amber">Near target</span></td><td><span class="tag tag-green">Maintain</span></td></tr>
+      <tr><td>IITA</td><td class="num">2,096,610</td><td class="num">783,967</td><td class="num">37.4%</td><td class="num gap-neg">&#8722;89,621</td><td><span class="tag tag-amber">Near target</span></td><td><span class="tag tag-strong">Strong</span></td></tr>
+      <tr><td>WorldFish</td><td class="num">620,611</td><td class="num">190,834</td><td class="num">30.7%</td><td class="num gap-neg">&#8722;67,754</td><td><span class="tag tag-amber">Below target</span></td><td><span class="tag tag-green">Maintain</span></td></tr>
+      <tr><td>AfricaRice <sup>*</sup></td><td class="num">807,092</td><td class="num">275,638</td><td class="num">34.2%</td><td class="num gap-neg">&#8722;60,650</td><td><span class="tag tag-amber">Below target</span></td><td><span class="tag tag-monitor27">Watch</span></td></tr>
+      <tr><td>ICRISAT <sup>&#8225;</sup></td><td class="num">104,220</td><td class="num">0</td><td class="num">0%</td><td class="num gap-neg">&#8722;43,425</td><td><span class="tag tag-red">Data flag</span></td><td><span class="tag tag-gray">Clarify</span></td></tr>
+      <tr><td>SO</td><td class="num">543,700</td><td class="num">212,424</td><td class="num">39.1%</td><td class="num gap-neg">&#8722;14,118</td><td><span class="tag tag-green">Near target</span></td><td><span class="tag tag-strong">Strong</span></td></tr>
+      <tr><td>Unknown <sup>&#167;</sup></td><td class="num">963,125</td><td class="num">0</td><td class="num">0%</td><td class="num">&mdash;</td><td><span class="tag tag-gray">Pending</span></td><td><span class="tag tag-gray">Pending</span></td></tr>
+      <tr class="total-row"><td>TOTAL</td><td class="num">22,748,709</td><td class="num">6,232,944</td><td class="num">27.4%</td><td class="num gap-neg">&#8722;3,245,685</td><td colspan="2"><span class="tag tag-red">14.3pp below target</span></td></tr>
+    </tbody>
+  </table>
+  <p class="aow-note">Highlighted rows (CIAT, ILRI, IFPRI) = consecutive 2025&ndash;2026 underperformance; flagged for 2027 budget reassessment. &ldquo;Watch&rdquo; = significant underspend that will trigger reassessment if the pattern continues. At the 41.7% five-month threshold no center is above target; SO (39.1%), IITA (37.4%) and CIMMYT (37.3%) are closest.<br>
+  &#8225; ICRISAT: actual fell from $32,424 in the April report to $0 in the May report &mdash; a decrease is not possible without reclassification. Flagged as a posting/reporting error for Shola.<br>
+  * AfricaRice: 2026 budget revised down to $807,092 (was $1,021,072); the AoW2 line now shows a negative budget (&#8722;$189,279) against $223,800 actual &mdash; available funds &#8722;$413,079 &mdash; while its funded AoW4 line ($790,171) is only 4.7% spent. Spend should be redirected from the overspent AoW2 to AoW4 (see allocation flag above). AfricaRice also overspent by $224,390 in 2025. Confirm all with Shola.<br>
+  &#8224; Bioversity: near-zero burn at 6.2% ($19,787 of $317,713); explanation needed.<br>
+  &#167; Unknown ($963,125) classification under resolution. Excluded from gap calculation.</p>
+</div>
+
+<!-- Charts -->
+<div class="two-col">
+  <div class="section">
+    <div class="section-title">CENTER BURN RATES VS. 41.7% TARGET</div>
+    <div class="chart-wrap"><canvas id="centerChart"></canvas></div>
+  </div>
+  <div class="section">
+    <div class="section-title">AoW BURN RATES (Jan&ndash;May 2026)</div>
+    <div class="chart-wrap"><canvas id="aowChart"></canvas></div>
+  </div>
+</div>
+
+<!-- Category breakdown -->
+<div class="section">
+  <div class="section-title">&#128178; BUDGET CATEGORY BREAKDOWN (Jan&ndash;May 2026)</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th class="num">Budget ($)</th>
+        <th class="num">Actual ($)</th>
+        <th class="num">Burn Rate</th>
+        <th class="num">Gap from 41.7% ($)</th>
+        <th>Risk</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Staffing, Chargebacks &amp; Indirect</td><td class="num">13,009,803</td><td class="num">5,306,043</td><td class="num">40.8%</td><td class="num gap-neg">&#8722;114,708</td><td><span class="tag tag-green">On track</span></td></tr>
+      <tr><td>Operations (consultants, travel, workshops)</td><td class="num">6,719,850</td><td class="num">865,634</td><td class="num">12.9%</td><td class="num gap-neg">&#8722;1,934,304</td><td><span class="tag tag-red">Critically low</span></td></tr>
+      <tr style="background:#fff5f5;"><td><strong>Non-CGIAR Collaborators &#9888;</strong></td><td class="num"><strong>2,246,790</strong></td><td class="num"><strong>61,265</strong></td><td class="num"><strong>2.7%</strong></td><td class="num gap-neg"><strong>&#8722;874,898</strong></td><td><span class="tag tag-red">Standing red flag</span></td></tr>
+      <tr class="total-row"><td>TOTAL <sup>&#167;</sup></td><td class="num">21,976,443</td><td class="num">6,232,942</td><td class="num">28.4%</td><td class="num gap-neg">&#8722;2,923,909</td><td></td></tr>
+    </tbody>
+  </table>
+  <p class="aow-note">Operations and non-CGIAR collaborator categories together account for $2.81M of the program&rsquo;s delivery gap. Personnel/staffing is on track at 40.8%. The delivery problem is concentrated in field activities and external partnerships, not center overhead.<br>
+  &#167; The category tab still totals $21.98M in budget (pre-rebudget); the refreshed center/AoW breakdown totals $22.75M. Category gap figures are indicative until Shola reconciles the two tabs.</p>
+</div>
+
+<!-- AoW summary -->
+<div class="section">
+  <div class="section-title">&#128203; AREA OF WORK BURN RATES (Jan&ndash;May 2026)</div>
+  <table>
+    <thead>
+      <tr><th>Area of Work</th><th class="num">Budget ($)</th><th class="num">Actual ($)</th><th class="num">Burn Rate</th><th class="num">Gap from 41.7% ($)</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>AoW 0 &mdash; Cross-cutting &amp; Management</td><td class="num">1,995,620</td><td class="num">375,686</td><td class="num">18.8%</td><td class="num gap-neg">&#8722;455,822</td><td><span class="tag tag-red">Below target</span></td></tr>
+      <tr><td>AoW 1 &mdash; Engage and Empower</td><td class="num">2,392,142</td><td class="num">767,398</td><td class="num">32.1%</td><td class="num gap-neg">&#8722;229,328</td><td><span class="tag tag-amber">Below target</span></td></tr>
+      <tr><td>AoW 2 &mdash; Grand Challenges &amp; Scaling Flagships</td><td class="num">7,566,203</td><td class="num">2,179,026</td><td class="num">28.8%</td><td class="num gap-neg">&#8722;973,559</td><td><span class="tag tag-red">Largest gap</span></td></tr>
+      <tr><td>AoW 3 &mdash; Enabling Environment Lab</td><td class="num">3,433,304</td><td class="num">818,948</td><td class="num">23.9%</td><td class="num gap-neg">&#8722;611,595</td><td><span class="tag tag-red">Below target</span></td></tr>
+      <tr><td>AoW 4 &mdash; Finance &amp; Partnerships</td><td class="num">4,489,863</td><td class="num">1,263,091</td><td class="num">28.1%</td><td class="num gap-neg">&#8722;607,685</td><td><span class="tag tag-amber">Below target</span></td></tr>
+      <tr><td>AoW 5 &mdash; Learning for Impact</td><td class="num">2,871,424</td><td class="num">789,846</td><td class="num">27.5%</td><td class="num gap-neg">&#8722;406,581</td><td><span class="tag tag-amber">Below target</span></td></tr>
+      <tr><td>AoW 11 &mdash; Inception (residual)</td><td class="num">&mdash;</td><td class="num">38,949</td><td class="num">&mdash;</td><td class="num gap-pos">+38,949</td><td><span class="tag tag-gray">No budget line</span></td></tr>
+      <tr class="total-row"><td>TOTAL (excl. unresolved #REF! rows)</td><td class="num">22,748,556</td><td class="num">6,232,944</td><td class="num">27.4%</td><td class="num gap-neg">&#8722;3,245,685</td><td></td></tr>
+    </tbody>
+  </table>
+  <p class="aow-note">No AoW is on target at the 41.7% five-month threshold; AoW 1 (32.1%) is closest. AoW 2 carries the largest absolute gap ($974K), reflecting its budget scale ($7.6M). AoW 0 management at 18.8% remains the lowest-burning major AoW. AoW 11 ($38,949) is an inception residual posted with no 2026 budget line &mdash; flagged for resolution.</p>
+</div>
+
+<!-- 2025 Carryover -->
+<div class="section">
+  <div class="section-title">&#128336; 2025 CARRYOVER &mdash; CENTERS WITH MATERIAL BALANCES AND 2027 IMPLICATIONS</div>
+  <p style="font-size:12px;color:#444;margin-bottom:12px;line-height:1.65;">
+    Total net positive carryover: approximately <strong>$979,833</strong>, offset by <strong>$233,120</strong> in overruns (AfricaRice $224,390; SO $8,654; ICARDA $76), for a net available carryover of <strong>$746,712</strong>. ICRISAT fully spent its 2025 allocation ($29,350) and carried over nothing. The three centers with material positive balances &mdash; IFPRI, IITA, and ILRI &mdash; should be consolidated into the 2026 monitoring baseline. Where IFPRI and ILRI are now repeating a pattern of underspend in 2026, the 2025 carryover is not merely a bookkeeping matter: it is evidence of a structural delivery constraint that warrants careful consideration during the 2027 PORB process. The 2026 budget is finalized and no in-year adjustment is possible, but the two-year pattern should be formally documented and carried into 2027 planning.
+  </p>
+  <div class="carryover-grid">
+    <div class="co-card pos"><div class="co-c">IFPRI</div><div class="co-a">+$304,086</div><div class="co-r">2025 burn: 87.2%</div><div class="co-27">&#9888; 2027: Review allocation</div></div>
+    <div class="co-card pos"><div class="co-c">IITA</div><div class="co-a">+$275,090</div><div class="co-r">2025 burn: 79.5%</div><div class="co-27">2027: On track in 2026</div></div>
+    <div class="co-card pos"><div class="co-c">ILRI</div><div class="co-a">+$189,474</div><div class="co-r">2025 burn: 89.7%</div><div class="co-27">&#9888; 2027: Review allocation</div></div>
+    <div class="co-card pos"><div class="co-c">CIAT / Alliance</div><div class="co-a">+$133,574</div><div class="co-r">2025 burn: 97.2%</div><div class="co-27">&#9888; 2027: Review allocation</div></div>
+    <div class="co-card pos"><div class="co-c">IRRI</div><div class="co-a">+$34,341</div><div class="co-r">2025 burn: 98.7%</div><div class="co-27">2027: Watch</div></div>
+    <div class="co-card zero"><div class="co-c">ICRISAT</div><div class="co-a">$0</div><div class="co-r">2025 burn: 100%</div><div class="co-27" style="color:#1a3a5c;">2027: Maintain</div></div>
+    <div class="co-card over"><div class="co-c">AfricaRice</div><div class="co-a">&#8722;$224,390</div><div class="co-r">2025 overrun: 31.1%</div><div class="co-27" style="color:#856404;">2027: Review authorization</div></div>
+    <div class="co-card over"><div class="co-c">SO + ICARDA</div><div class="co-a">&#8722;$8,730</div><div class="co-r">Minor overruns</div><div class="co-27" style="color:#495057;">2027: No action required</div></div>
+  </div>
+</div>
+
+<!-- Action items -->
+<div class="section">
+  <div class="section-title">&#9989; ACTION ITEMS &mdash; BY RESPONSIBLE PARTY</div>
+  <div class="action-cols">
+    <div class="action-col dir">
+      <h3>Director</h3>
+      <div class="role-sub">Action required</div>
+      <div class="action-item"><span class="a-num">1.</span> Contact AoW leads for CIAT, ILRI, IWMI, IRRI, and IFPRI and request a written explanation of delivery pace and a credible plan to close the gap by year-end. Frame this as a program credibility concern. For IFPRI, ILRI, and CIAT specifically, note that the 2025 delivery pattern is repeating in 2026 and will be an important reference point in 2027 PORB planning.</div>
+      <div class="action-item"><span class="a-num">2.</span> Ask all AoW leads to confirm that non-CGIAR collaborator subcontracts are contracted and actively disbursing. The $2.25M budget at 2.7% burn after five months requires an immediate accounting from every AoW responsible for external partner spend.</div>
+      <div class="action-item"><span class="a-num">3.</span> Confirm with the relevant AoW lead why Bioversity&rsquo;s 2026 spend is near-zero ($19.8K of $317.7K) before the Q2 report.</div>
+    </div>
+    <div class="action-col sho">
+      <h3>Shola</h3>
+      <div class="role-sub">Financial management</div>
+      <div class="action-item"><span class="a-num">1.</span> Resolve the AfricaRice AoW coding: spend is being charged to AoW 2 (budget &#8722;$189,279, already overspent to &#8722;$413,079) while the funded AoW 4 line ($790,171, 4.7% burn) sits idle. Confirm whether this is miscoding &mdash; to be reposted to AoW 4 &mdash; or over-delivery requiring advance authorization.</div>
+      <div class="action-item"><span class="a-num">2.</span> Reconcile the $772K gap between the center/AoW budget total ($22.75M) and the &ldquo;by Category&rdquo; total ($21.98M), and correct the ICRISAT actual, which shows $0 in May having shown $32,424 in April.</div>
+      <div class="action-item"><span class="a-num">3.</span> Resolve the $963,125 &ldquo;Unknown&rdquo; center classification and provide the correct center attribution and expected posting date before the next report.</div>
+    </div>
+    <div class="action-col joi">
+      <h3>Director + Rana + Shola</h3>
+      <div class="role-sub">Agenda for upcoming call</div>
+      <div class="action-item"><span class="a-num">1.</span> Agree on consolidating 2025 carryover for IFPRI ($304K), IITA ($275K), and ILRI ($189K) into the 2026 monitoring baseline, so burn rates are tracked against total available funds.</div>
+      <div class="action-item"><span class="a-num">2.</span> Agree on treatment of the AoW11 inception residual ($38,949 posted with no 2026 budget line) and the AfricaRice AoW2/AoW4 reallocation.</div>
+      <div class="action-item"><span class="a-num">3.</span> Agree on a performance-based escalation protocol for 2027 PORB preparation: centers with budget &gt;$500K and consecutive underspend across 2025&ndash;2026 are formally flagged for reassessment, with the Director&rsquo;s rationale documented in the PORB submission.</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- PORB CROSSREF SECTION -->
+<div class="section">
+  <div class="section-title">&#9888; OUTCOME DELIVERY RISK: PORB COMMITMENTS vs. CURRENT SPEND</div>
+  <p style="font-size:0.85em;color:#555;margin:0 0 6px 0;line-height:1.6;">
+    Budget underspend is a financial management concern. <strong>What the PORB crossref reveals is something more serious: outcome commitments that cannot be met because the delivery mechanisms have not been activated.</strong> For AoW 2, 3, and 4, many of the program&rsquo;s most significant 2026 targets depend not on CGIAR execution alone but on contracted non-CGIAR partners &mdash; national research institutes, government agencies, and international organizations &mdash; delivering specific activities. When those partners are dormant after five months, the outcome gap is real and growing. The figures below draw on the PORB Partners sheet (May 2026 final) and cross-reference with the May monitoring report.
+  </p>
+  <p style="font-size:0.84em;color:#b30000;font-weight:600;margin:0 0 12px 0;">
+    &#9654; The $2.25M non-CGIAR partner allocation running at 2.7% overall is not a timing issue at this stage of the year &mdash; it is an activation failure that will directly translate to unmet outcome targets unless escalated now.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Center</th>
+        <th class="num">Burn Rate</th>
+        <th class="num">Dollar Gap ($)</th>
+        <th class="num">Planned Partner Budget ($)</th>
+        <th class="num">Partner as % of Center Budget</th>
+        <th>Partners &amp; Activation Concern</th>
+        <th>Outcome Risk Level</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="highlight-27">
+        <td>CIAT / Alliance</td>
+        <td class="num"><span style="color:#c0392b;font-weight:700;">23.7%</span></td>
+        <td class="num gap-neg">&#8722;545,419</td>
+        <td class="num"><strong>846,259</strong></td>
+        <td class="num">27.9%</td>
+        <td style="font-size:0.81em;">$836K listed in PORB as &ldquo;Unknown Partners&rdquo; under AoW 2. This is the largest single partner block in the Program and has no named counterpart after five months. The Grand Challenges in AoW 2 depend on external delivery for farmer-level outcomes. Unresolved.</td>
+        <td><span class="tag" style="background:#7b0000;color:#fff;padding:2px 7px;border-radius:3px;font-size:0.78em;font-weight:700;">CRITICAL</span></td>
+      </tr>
+      <tr>
+        <td>IWMI</td>
+        <td class="num"><span style="color:#e67e22;font-weight:700;">29.1%</span></td>
+        <td class="num gap-neg">&#8722;442,615</td>
+        <td class="num"><strong>398,107</strong></td>
+        <td class="num">11.3%</td>
+        <td style="font-size:0.81em;"><strong style="color:#c0392b;">&#9888; World Food Programme ($280K, AoW 3)</strong> is the largest single named partner contract in the entire Program. WFP engagement is load-bearing for the Enabling Environment Lab&rsquo;s most significant institutional output. No evidence of disbursement. If this contract is not signed and active, the AoW 3 WFP collaboration should be treated as at risk of non-delivery. Meramo Consulting ($22K), CDRI ($10K) also flagged.</td>
+        <td><span class="tag" style="background:#c0392b;color:#fff;padding:2px 7px;border-radius:3px;font-size:0.78em;font-weight:700;">CRITICAL</span></td>
+      </tr>
+      <tr class="highlight-27">
+        <td>IFPRI</td>
+        <td class="num"><span style="color:#c0392b;font-weight:700;">27.6%</span></td>
+        <td class="num gap-neg">&#8722;283,923</td>
+        <td class="num"><strong>275,618</strong></td>
+        <td class="num">13.7%</td>
+        <td style="font-size:0.81em;">$205K listed as &ldquo;Unknown Partners&rdquo; in AoW 5. African Population &amp; Health Research Centre ($71K, AoW 2) named but no spend visible. IFPRI remains a low-burning center at 27.6%.</td>
+        <td><span class="tag tag-red" style="padding:2px 7px;border-radius:3px;font-size:0.78em;">High</span></td>
+      </tr>
+      <tr>
+        <td>AfricaRice</td>
+        <td class="num"><span style="color:#e67e22;font-weight:700;">34.2%</span></td>
+        <td class="num gap-neg">&#8722;60,650</td>
+        <td class="num"><strong>186,000</strong></td>
+        <td class="num">23.0%</td>
+        <td style="font-size:0.81em;"><strong style="color:#7b0000;">&#9888; AoW misallocation:</strong> spend is being charged to AoW 2 (budget &#8722;$189K, actual $223,800, available &#8722;$413K) while the funded AoW 4 line ($790K) sits at 4.7% burn. Redirect to AoW 4. <strong style="color:#7b0000;">Geographic flag:</strong> $132K committed to INRAN Niger (AoW 4) &mdash; Niger is not an S4I 2026 priority country; review for justification. Also $54K to Ministry of Ag &amp; Rural Development in AoW 2 (country unspecified).</td>
+        <td><span class="tag" style="background:#7b0000;color:#fff;padding:2px 7px;border-radius:3px;font-size:0.78em;font-weight:700;">FLAG</span></td>
+      </tr>
+      <tr>
+        <td>ILRI</td>
+        <td class="num"><span style="color:#c0392b;font-weight:700;">23.4%</span></td>
+        <td class="num gap-neg">&#8722;458,241</td>
+        <td class="num"><strong>198,250</strong></td>
+        <td class="num">7.9%</td>
+        <td style="font-size:0.81em;">Wageningen University ($95K), Kenya Agricultural &amp; Livestock Research Org ($35K), Scaling Community of Practice ($33K) &mdash; all under AoW 5. Named partners; activation status unknown. ILRI is a consecutive underperformer (2025 + 2026) and now carries the second-largest dollar gap in the Program.</td>
+        <td><span class="tag tag-red" style="padding:2px 7px;border-radius:3px;font-size:0.78em;">High</span></td>
+      </tr>
+      <tr>
+        <td>IRRI</td>
+        <td class="num"><span style="color:#c0392b;font-weight:700;">22.9%</span></td>
+        <td class="num gap-neg">&#8722;332,946</td>
+        <td class="num"><strong>205,500</strong></td>
+        <td class="num">11.6%</td>
+        <td style="font-size:0.81em;">Ministry of Agriculture Vietnam ($20K) and Cambodia ($15K) named; $170K unknown (AoW 3). IRRI has the fourth-largest dollar gap in the Program. Partner activation is unconfirmed.</td>
+        <td><span class="tag tag-red" style="padding:2px 7px;border-radius:3px;font-size:0.78em;">High</span></td>
+      </tr>
+      <tr>
+        <td>ICARDA</td>
+        <td class="num"><span style="color:#c0392b;font-weight:700;">27.6%</span></td>
+        <td class="num gap-neg">&#8722;150,175</td>
+        <td class="num">89,975</td>
+        <td class="num">8.4%</td>
+        <td style="font-size:0.81em;">Agricultural Research Center Egypt ($37K), INRA Morocco ($34K), EIAR Ethiopia ($19K). Moderate partner dependency; burn rate below target.</td>
+        <td><span class="tag tag-amber" style="padding:2px 7px;border-radius:3px;font-size:0.78em;">Watch</span></td>
+      </tr>
+      <tr>
+        <td>CIMMYT</td>
+        <td class="num"><span style="color:#e67e22;font-weight:700;">37.3%</span></td>
+        <td class="num gap-neg">&#8722;105,173</td>
+        <td class="num">0</td>
+        <td class="num">0%</td>
+        <td style="font-size:0.81em;">No named non-CGIAR partners in PORB. Delivery risk is internal execution pace only. Closest to target among higher-budget centers.</td>
+        <td><span class="tag" style="background:#27ae60;color:#fff;padding:2px 7px;border-radius:3px;font-size:0.78em;">Lower</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin:16px 0 0 0;padding:14px 16px;background:#fff3f3;border-left:5px solid #c0392b;border-radius:4px;font-size:0.84em;line-height:1.65;">
+    <strong style="color:#7b0000;">&#9650; Priority cases for director follow-up before the upcoming monitoring call:</strong><br><br>
+    <strong>1. CIAT / Alliance AoW 2 &mdash; $836K partner block, no named counterpart.</strong> This is the program&rsquo;s highest single outcome risk. The Grand Challenges flagship in AoW 2 carries the largest farmer-scale ambitions of any AoW. A block of this size sitting against an unnamed partner category after five months is not a workplan execution issue; it is a commitments gap. Evan should be asked directly: who are the partners, are subcontracts issued, and what is the earliest plausible disbursement date?<br><br>
+    <strong>2. IWMI AoW 3 &mdash; WFP contract, $280K.</strong> The World Food Programme is the largest single named partner in the entire 2026 program. Its activation underpins the Enabling Environment Lab&rsquo;s most significant institutional engagement. Inga should confirm in writing whether the WFP agreement is signed and when the first disbursement is expected. If the contract is not yet in place, this should be escalated as a program-level risk, not an AoW-level operational matter.<br><br>
+    <strong>3. AfricaRice &mdash; AoW 2 overspend and INRAN Niger $132K.</strong> AfricaRice is charging against an already-overspent AoW 2 line (&#8722;$413K available) while its funded AoW 4 allocation ($790K) runs at 4.7%; spend should be redirected to AoW 4. Separately, the $132K INRAN Niger commitment sits in a non-priority country. Solomon should confirm whether the AoW 2 charges are miscoding or authorized over-delivery, and whether the Niger engagement has a documented rationale aligned with the 2026 geographic focus.
+  </div>
+</div>
+
+<!-- AOW LEADS ACTION SECTION -->
+<div class="section">
+  <div class="section-title">&#128203; REQUIRED RESPONSES FROM AOW LEADS &mdash; PARTNER ACTIVATION STATUS</div>
+  <p style="font-size:0.84em;color:#555;margin:0 0 12px 0;line-height:1.6;">
+    The following is required from each AoW lead ahead of the upcoming monitoring call. Each lead should confirm the activation status of their center&rsquo;s largest non-CGIAR partner commitments and flag any contracts not yet signed or disbursing.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>AoW Lead</th>
+        <th>Center(s) of Concern</th>
+        <th>Partner Commitment at Risk</th>
+        <th>Required Confirmation</th>
+        <th>Priority</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Evan</strong><br><span style="font-size:0.8em;color:#666;">AoW 2 &mdash; Grand Challenges</span></td>
+        <td>CIAT / Alliance</td>
+        <td style="font-size:0.82em;">$836K &ldquo;Unknown Partners&rdquo; &mdash; largest unactivated partner block in the Program. Farmer-level outcomes for Grand Challenges depend on this.</td>
+        <td style="font-size:0.82em;">Who are the named partners? Are subcontracts issued? Earliest disbursement date?</td>
+        <td><span class="tag" style="background:#7b0000;color:#fff;padding:2px 7px;border-radius:3px;font-size:0.78em;font-weight:700;">URGENT</span></td>
+      </tr>
+      <tr>
+        <td><strong>Inga</strong><br><span style="font-size:0.8em;color:#666;">AoW 3 &mdash; Enabling Environment Lab</span></td>
+        <td>IWMI</td>
+        <td style="font-size:0.82em;">World Food Programme $280K &mdash; load-bearing for AoW 3&rsquo;s most significant institutional collaboration. No spend recorded.</td>
+        <td style="font-size:0.82em;">Is the WFP agreement signed? When is first disbursement expected? If unsigned, escalate immediately as program-level risk.</td>
+        <td><span class="tag" style="background:#7b0000;color:#fff;padding:2px 7px;border-radius:3px;font-size:0.78em;font-weight:700;">URGENT</span></td>
+      </tr>
+      <tr>
+        <td><strong>Solomon</strong><br><span style="font-size:0.8em;color:#666;">AoW 4 &mdash; Finance &amp; Partnerships</span></td>
+        <td>AfricaRice, ILRI</td>
+        <td style="font-size:0.82em;">AfricaRice: AoW 2 overspent (&#8722;$189K budget, $223,800 charged, &#8722;$413K available) while AoW 4 sits at 4.7% burn ($37K of $790K). Spend is going to the wrong AoW. Also INRAN Niger $132K under AoW 4 (non-priority country &mdash; geographic misalignment flag). ILRI AoW 4: $542K PORB allocation, activation unclear.</td>
+        <td style="font-size:0.82em;">Confirm whether AfricaRice AoW 2 charges are miscoding (repost to AoW 4) or unauthorized over-delivery, and redirect spend to the funded AoW 4 line. Confirm whether Niger engagement is justified and aligned with 2026 geographic scope. Confirm AfricaRice and ILRI AoW 4 subcontract status.</td>
+        <td><span class="tag tag-red" style="padding:2px 7px;border-radius:3px;font-size:0.78em;">High</span></td>
+      </tr>
+      <tr>
+        <td><strong>Iddo</strong><br><span style="font-size:0.8em;color:#666;">AoW 5 &mdash; Learning for Impact</span></td>
+        <td>ILRI, IFPRI</td>
+        <td style="font-size:0.82em;">ILRI AoW 5: Wageningen ($95K), KALRO ($35K), SCoP ($33K). IFPRI AoW 5: $205K unknown partner. Both centers burning below 28%. Learning outcomes require partner-led activities.</td>
+        <td style="font-size:0.82em;">Confirm activation status of Wageningen, KALRO, and SCoP agreements. Ask IFPRI focal point to name and activate the $205K partner block.</td>
+        <td><span class="tag tag-red" style="padding:2px 7px;border-radius:3px;font-size:0.78em;">High</span></td>
+      </tr>
+      <tr>
+        <td><strong>Deissy</strong><br><span style="font-size:0.8em;color:#666;">AoW 1 &mdash; Engage &amp; Empower</span></td>
+        <td>IWMI (AoW 1)</td>
+        <td style="font-size:0.82em;">$71K partner budget under AoW 1 (largely unknown). CIAT AoW 1 partner ($10K Ministry of Ag Colombia) low priority but should be confirmed active.</td>
+        <td style="font-size:0.82em;">Confirm IWMI AoW 1 partner spend is on track and that the stakeholder engagement and demand signaling activities are progressing in priority countries.</td>
+        <td><span class="tag tag-amber" style="padding:2px 7px;border-radius:3px;font-size:0.78em;">Watch</span></td>
+      </tr>
+      <tr>
+        <td><strong>Rica Joy</strong><br><span style="font-size:0.8em;color:#666;">AoW 2 Co-lead</span></td>
+        <td>IRRI, WorldFish</td>
+        <td style="font-size:0.82em;">IRRI: $205K partner budget, $170K unnamed. IRRI overall burn: 22.9%. WorldFish: $27K partners, burn 30.7% &mdash; lower concern. IRRI&rsquo;s Enabling Environment activities in Vietnam and Cambodia depend on government ministry engagement.</td>
+        <td style="font-size:0.82em;">Confirm IRRI ministry agreements in Vietnam and Cambodia are active. Confirm whether IRRI&rsquo;s low burn reflects timing or a workplan execution gap.</td>
+        <td><span class="tag tag-amber" style="padding:2px 7px;border-radius:3px;font-size:0.78em;">Watch</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">S4I Budget Monitoring Brief &mdash; May 2026 &nbsp;|&nbsp; Director&rsquo;s review document &nbsp;|&nbsp; Open by double-clicking in any browser. Internet connection required for charts.</div>
+</div>
+
+<script>
+const cCtx = document.getElementById('centerChart').getContext('2d');
+const cLabels = ['CIAT','IWMI','ILRI','IRRI','IFPRI','AfricaRice','CIMMYT','ICARDA','CIP','Bioversity','WorldFish','IITA','SO','ICRISAT'];
+const cRates = [23.7,29.1,23.4,22.9,27.6,34.2,37.3,27.6,27.3,6.2,30.7,37.4,39.1,0];
+const cBudgets = [3030683,3527231,2503641,1772078,2012320,807092,2423691,1065529,960466,317713,620611,2096610,543700,104220];
+const cColors = cRates.map(r => r < 28 ? '#c0392b' : r < 38 ? '#e67e22' : '#27ae60');
+new Chart(cCtx, {
+  type:'bar', data:{labels:cLabels, datasets:[{data:cRates, backgroundColor:cColors, borderRadius:3}]},
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>`Burn: ${ctx.raw}%`, afterLabel:ctx=>`Budget: $${(cBudgets[ctx.dataIndex]/1e6).toFixed(1)}M`}}},
+    scales:{y:{min:0,max:50,ticks:{callback:v=>v+'%',font:{size:10}},grid:{color:'#f0f0f0'}},x:{ticks:{font:{size:9}}}}
+  },
+  plugins:[{id:'tl',afterDraw(chart){
+    const {ctx,scales:{y,x}}=chart, yp=y.getPixelForValue(41.67);
+    ctx.save();ctx.beginPath();ctx.setLineDash([5,3]);ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1.5;
+    ctx.moveTo(x.left,yp);ctx.lineTo(x.right,yp);ctx.stroke();
+    ctx.fillStyle='#1a3a5c';ctx.font='9px Arial';ctx.fillText('41.7% target',x.right-72,yp-4);ctx.restore();
+  }}]
+});
+const aCtx = document.getElementById('aowChart').getContext('2d');
+new Chart(aCtx, {
+  type:'bar',
+  data:{labels:['AoW0 Mgmt','AoW1 Engage','AoW2 Grand Ch.','AoW3 Env.Lab','AoW4 Finance','AoW5 Learning'],
+        datasets:[{data:[18.8,32.1,28.8,23.9,28.1,27.5],backgroundColor:['#c0392b','#e67e22','#e67e22','#c0392b','#e67e22','#c0392b'],borderRadius:3}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+           scales:{y:{min:0,max:50,ticks:{callback:v=>v+'%',font:{size:10}},grid:{color:'#f0f0f0'}},x:{ticks:{font:{size:9}}}}},
+  plugins:[{id:'al',afterDraw(chart){
+    const {ctx,scales:{y,x}}=chart, yp=y.getPixelForValue(41.67);
+    ctx.save();ctx.beginPath();ctx.setLineDash([5,3]);ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1.5;
+    ctx.moveTo(x.left,yp);ctx.lineTo(x.right,yp);ctx.stroke();
+    ctx.fillStyle='#1a3a5c';ctx.font='9px Arial';ctx.fillText('41.7% target',x.right-72,yp-4);ctx.restore();
+  }}]
+});
+</script>
+</body>
+</html>
